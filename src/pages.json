@@ -1,0 +1,100 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue",
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": { "navigationBarTitleText": "幸运锦鲤 · 宠物领养", "navigationBarBackgroundColor": "#2979ff", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/adopt/list",
+      "style": { "navigationBarTitleText": "领养" }
+    },
+    {
+      "path": "pages/adopt/detail",
+      "style": { "navigationBarTitleText": "宠物详情", "enablePullDownRefresh": false }
+    },
+    {
+      "path": "pages/publish/index",
+      "style": { "navigationBarTitleText": "发布待领养" }
+    },
+    {
+      "path": "pages/science/list",
+      "style": { "navigationBarTitleText": "养宠科普" }
+    },
+    {
+      "path": "pages/science/post",
+      "style": { "navigationBarTitleText": "发布科普帖" }
+    },
+    {
+      "path": "pages/science/ai-chat",
+      "style": { "navigationBarTitleText": "AI 科普问答" }
+    },
+    {
+      "path": "pages/message/conversation-list",
+      "style": { "navigationBarTitleText": "我的会话" }
+    },
+    {
+      "path": "pages/message/chat",
+      "style": { "navigationBarTitleText": "会话", "navigationStyle": "default" }
+    },
+    {
+      "path": "pages/message/notification",
+      "style": { "navigationBarTitleText": "消息通知" }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/mine/profile",
+      "style": { "navigationBarTitleText": "编辑资料" }
+    },
+    {
+      "path": "pages/mine/myposts",
+      "style": { "navigationBarTitleText": "我的发布" }
+    },
+    {
+      "path": "pages/mine/favorites",
+      "style": { "navigationBarTitleText": "我的收藏" }
+    },
+    {
+      "path": "pages/login/index",
+      "style": { "navigationBarTitleText": "登录", "navigationBarBackgroundColor": "#2979ff", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/lostpet/index",
+      "style": { "navigationBarTitleText": "地图寻宠" }
+    }
+  ],
+  "tabBar": {
+    "color": "#909399",
+    "selectedColor": "#2979ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/adopt/list", "text": "领养" },
+      { "pagePath": "pages/science/list", "text": "科普" },
+      { "pagePath": "pages/message/notification", "text": "消息" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "幸运锦鲤",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f8"
+  },
+  "condition": {
+    "current": 0,
+    "list": [
+      { "name": "领养详情", "pathName": "pages/adopt/detail", "query": "id=post_seed_0" }
+    ]
+  }
+}
