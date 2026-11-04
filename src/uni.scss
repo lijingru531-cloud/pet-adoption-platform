@@ -1,0 +1,21 @@
+/**
+ * 全局 SCSS 变量（uView Plus 兼容）
+ * 仅定义本项目使用的主题令牌；uView 组件样式由其插件注入，无需额外 import。
+ */
+$u-primary: #2979ff;
+$u-success: #19be6b;
+$u-warning: #ff9900;
+$u-error: #fa3534;
+$u-info: #909399;
+
+$color-primary: #2979ff;
+$color-success: #19be6b;
+$color-bg: #f5f6f8;
+$color-text: #303133;
+$color-text-light: #909399;
+
+page {
+  background-color: $color-bg;
+  font-size: 28rpx;
+  color: $color-text;
+}

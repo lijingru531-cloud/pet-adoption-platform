@@ -1,0 +1,36 @@
+/**
+ * 全局样式（统一 UI 风格）
+ */
+@use 'sass:math';
+
+* {
+  box-sizing: border-box;
+}
+
+view,
+text,
+image,
+button {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+image {
+  display: block;
+}
+
+.u-button {
+  border-radius: 100rpx;
+}
+
+// 通用卡片
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+}
+
+// 文本省略
+.ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
