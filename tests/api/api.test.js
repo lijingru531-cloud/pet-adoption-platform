@@ -63,7 +63,9 @@ describe('api 层（Mock 模式）统一返回结构', () => {
     const r3 = await apiLostpet.listNearbyLostPet();
     expect(r1.code).toBe(0);
     expect(r3.code).toBe(0);
-    expect(Array.isArray(r1.data)).toBe(true);
+    // 科普列表返回 { list, total, page, pageSize } 信封
+    expect(r1.data).toHaveProperty('list');
+    expect(Array.isArray(r1.data.list)).toBe(true);
     expect(r2.code).toBe(0);
   });
 });
