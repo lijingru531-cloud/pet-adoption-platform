@@ -23,9 +23,18 @@ const useMock = ENV.USE_MOCK === true;
 /** 选中底层实现 */
 const backend = useMock ? mockBackend : cloudBackend;
 
-/** Mock 模式首次注入演示数据 */
-if (useMock && typeof seedMockData === 'function') {
-  seedMockData();
+/**
+ * Mock 模式首次注入演示数据（延迟调用，等 uni polyfill 就绪后再执行）。
+ *  - 三端入口（HBuilderX）会在加载 services 前就注入 uni，可安全调用
+ *  - H5 命令行模式下 uni 需要等到 main.js 执行才能用，故改为延迟到首次访问 collection 时触发
+ * 这里改为懒触发：导出 ensureSeed() 供 App.vue onLaunch 手动调用。
+ */
+let seeded = false;
+export function ensureSeed() {
+  if (useMock && !seeded && typeof seedMockData === 'function') {
+    seeded = true;
+    seedMockData();
+  }
 }
 
 /**

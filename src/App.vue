@@ -2,6 +2,7 @@
 import { onLaunch, onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/user';
 import { getUnreadCount } from '@/api/notification';
+import { ensureSeed } from '@/services';
 
 const MESSAGE_TAB_INDEX = 3;
 
@@ -22,6 +23,7 @@ async function refreshBadge() {
 }
 
 onLaunch(() => {
+  ensureSeed();
   userStore.initFromStorage();
   refreshBadge();
 });

@@ -1,13 +1,31 @@
 /**
  * 全局 SCSS 变量（uView Plus 兼容）
- * 仅定义本项目使用的主题令牌；uView 组件样式由其插件注入，无需额外 import。
+ *
+ * ⚠️ 必须在最顶部导入 uview-plus 的 SCSS 资源，否则框架内部组件
+ *    引用的变量（$u-content-color）和 mixin（flex()）会报 Undefined variable/mixin。
+ *    这是 uni-app + uview-plus 在 H5 build 模式下的常见配置要求。
  */
+
+// uview-plus SCSS 资源（变量 + mixin）
+@import '@/../node_modules/uview-plus/libs/css/mixin.scss';
+@import '@/../node_modules/uview-plus/theme.scss';
+
+// uView Plus 基础变量（框架组件内部引用）
 $u-primary: #2979ff;
 $u-success: #19be6b;
 $u-warning: #ff9900;
 $u-error: #fa3534;
 $u-info: #909399;
 
+$u-main-color: $u-primary;
+$u-content-color: #303133;
+$u-tips-color: #909399;
+$u-light-color: #c0c4cc;
+$u-border-color: #dcdfe6;
+$u-bg-color: #f5f6f8;
+$u-disabled-color: #c0c4cc;
+
+// 项目自定义颜色令牌
 $color-primary: #2979ff;
 $color-success: #19be6b;
 $color-bg: #f5f6f8;
