@@ -48,6 +48,25 @@
         @click="goDetail"
       />
     </view>
+
+    <!-- 科普（全局搜索覆盖领养帖 + 科普帖，E5） -->
+    <view class="section-title science-title">
+      <text>养宠科普</text>
+      <text class="more" @click="goScience">查看更多 ›</text>
+    </view>
+    <view v-if="scienceStore.loading" class="loading"><u-loading-icon /></view>
+    <view v-else-if="scienceStore.list.length === 0" class="science-empty">
+      <text>暂无相关科普，去发布第一篇吧</text>
+    </view>
+    <view v-else class="waterfall">
+      <science-card
+        v-for="item in scienceStore.list"
+        :key="item._id"
+        :post="item"
+        @click="goScience"
+        @tag="onScienceTag"
+      />
+    </view>
   </view>
 </template>
 
@@ -55,15 +74,23 @@
 import { onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
 import { usePostStore } from '@/store/post';
+import { useScienceStore } from '@/store/science';
 import PostCard from '@/components/post-card.vue';
+import ScienceCard from '@/components/science-card.vue';
 import EmptyState from '@/components/empty-state.vue';
 
 const postStore = usePostStore();
+const scienceStore = useScienceStore();
 const keyword = ref('');
 
 function onSearch() {
-  postStore.setKeyword(keyword.value);
-  postStore.fetchList({ page: 1 });
+  // 跳转到全局统一搜索页面（Sprint3：跨模块关键词检索）
+  const kw = (keyword.value || '').trim();
+  if (kw) {
+    uni.navigateTo({ url: `/pages/search/index?keyword=${encodeURIComponent(kw)}` });
+  } else {
+    uni.navigateTo({ url: '/pages/search/index' });
+  }
 }
 function goAdopt() {
   uni.switchTab({ url: '/pages/adopt/list' });
@@ -71,12 +98,16 @@ function goAdopt() {
 function goScience() {
   uni.switchTab({ url: '/pages/science/list' });
 }
+function onScienceTag() {
+  goScience();
+}
 function goDetail(post) {
   uni.navigateTo({ url: `/pages/adopt/detail?id=${post._id}` });
 }
 
 onShow(() => {
   postStore.fetchList({ page: 1 });
+  scienceStore.fetchList({ page: 1 });
 });
 </script>
 
@@ -118,6 +149,18 @@ onShow(() => {
     font-size: 30rpx;
     font-weight: 600;
     color: #303133;
+    &.science-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      .more { font-size: 24rpx; font-weight: 400; color: #19be6b; }
+    }
+  }
+  .science-empty {
+    padding: 40rpx;
+    text-align: center;
+    font-size: 24rpx;
+    color: #909399;
   }
   .waterfall {
     padding: 0 16rpx;

@@ -154,6 +154,13 @@ export async function generateSummary(text = '') {
     if (clean.includes('疫苗')) tags.push('已疫苗');
     if (clean.includes('绝育')) tags.push('已绝育');
     if (clean.includes('温顺')) tags.push('温顺');
+    // 科普向扩展标签（additive：不影响既有领养帖标签）
+    if (clean.includes('营养')) tags.push('营养');
+    if (clean.includes('训练')) tags.push('训练');
+    if (clean.includes('行为')) tags.push('行为');
+    if (clean.includes('医疗') || clean.includes('健康')) tags.push('健康');
+    if (clean.includes('驱虫')) tags.push('已驱虫');
+    if (clean.includes('幼')) tags.push('幼宠');
     return ok({ summary: summary || '暂无摘要', tags: tags.slice(0, 5) });
   }
   // 云端：由 services/cloud.aiSummary 实现

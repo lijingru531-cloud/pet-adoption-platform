@@ -166,3 +166,35 @@ export const PLATFORM = {
   H5: 'H5',
   APP: 'APP',
 };
+
+/** 科普帖分类（B1/B2，架构设计 3.2） */
+export const SCIENCE_CATEGORY = {
+  FEEDING: 'feeding', // 喂养
+  HEALTH: 'health', // 健康医疗
+  BEHAVIOR: 'behavior', // 行为训练
+  ADOPTION: 'adoption', // 领养须知
+  OTHER: 'other', // 其他
+};
+
+export const SCIENCE_CATEGORY_LABEL = {
+  [SCIENCE_CATEGORY.FEEDING]: '喂养',
+  [SCIENCE_CATEGORY.HEALTH]: '健康医疗',
+  [SCIENCE_CATEGORY.BEHAVIOR]: '行为训练',
+  [SCIENCE_CATEGORY.ADOPTION]: '领养须知',
+  [SCIENCE_CATEGORY.OTHER]: '其他',
+};
+
+/** 科普帖 AI 审核状态（沿用 AI 管理员语义，架构设计 3.2 / D1） */
+export const SCIENCE_REVIEW_STATUS = {
+  PENDING: 'pending', // 审核中
+  PASS: 'pass', // 通过（公开可见）
+  BLOCKED: 'blocked', // 已拦截
+  REVIEW: 'review', // 疑似，转人工
+};
+
+export const SCIENCE_REVIEW_STATUS_LABEL = {
+  [SCIENCE_REVIEW_STATUS.PENDING]: '审核中',
+  [SCIENCE_REVIEW_STATUS.PASS]: '已发布',
+  [SCIENCE_REVIEW_STATUS.BLOCKED]: '已拦截',
+  [SCIENCE_REVIEW_STATUS.REVIEW]: '待人工复核',
+};
