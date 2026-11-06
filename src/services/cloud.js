@@ -51,6 +51,14 @@ const cloudBackend = {
   review: {
     records: (targetType, targetId) => call('review-records', { targetType, targetId }),
   },
+  science: {
+    create: (payload) => call('science-create', payload),
+    list: (p) => call('science-list', p),
+    detail: (id) => call('science-detail', { id }),
+    tags: () => call('science-tags', {}),
+  },
+  // 全局统一搜索（Sprint3）
+  search: (p) => call('search-global', p),
   imageReview: (images = []) => call('image-review', { images }),
   ai: {
     // 真实大模型调用统一走云端 ai-chat（ai-gateway 封装免密钥 LLM）

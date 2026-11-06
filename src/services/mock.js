@@ -17,6 +17,8 @@ import {
   NOTIFICATION_TYPE,
   REPORT_REASON,
   TARGET_TYPE,
+  SCIENCE_REVIEW_STATUS,
+  SCIENCE_CATEGORY,
 } from '@/constants/enum';
 
 const users = collection('users');
@@ -28,6 +30,7 @@ const reports = collection('reports');
 const reviewRecords = collection('review_records');
 const favorites = collection('favorites');
 const appeals = collection('appeals');
+const science = collection('science_posts');
 
 /** 当前登录用户（token 即 userId，Mock 简化） */
 function currentUser() {
@@ -315,6 +318,130 @@ const mockBackend = {
     },
   },
 
+  // ===================== 科普帖（B1/B2/B3/D3） =====================
+  science: {
+    /**
+     * 发布科普帖（触发 AI 实时文本审核，D1/D2）
+     * 合规通过：生成摘要/标签（D3），状态置 pass（公开可见）；
+     * 疑似：转人工（review）；违规：拦截（blocked）+ 通知作者。
+     */
+    async create(payload = {}) {
+      const user = currentUser();
+      if (!user) return fail(ERROR_CODE.UNAUTHORIZED);
+      if (!user.mobile) return fail(ERROR_CODE.FORBIDDEN, '请先绑定手机号后再发布');
+      // 必填校验
+      const required = ['title', 'category', 'cover', 'content'];
+      for (const k of required) {
+        if (!payload[k]) return fail(ERROR_CODE.INVALID_PARAM, `缺少必填项：${k}`);
+      }
+      if (!Object.values(SCIENCE_CATEGORY).includes(payload.category)) {
+        return fail(ERROR_CODE.INVALID_PARAM, '科普分类不合法');
+      }
+
+      const post = {
+        _id: genId('sci'),
+        authorId: user._id,
+        title: payload.title,
+        category: payload.category,
+        cover: payload.cover,
+        content: payload.content,
+        summary: '',
+        tags: [],
+        views: 0,
+        status: SCIENCE_REVIEW_STATUS.PENDING,
+        createdAt: Date.now(),
+      };
+      science.insert(post);
+
+      // 触发 AI 文本审核（D1/D2）
+      const text = `${payload.title}\n${payload.content}`;
+      const review = await reviewText({ targetType: TARGET_TYPE.SCIENCE, targetId: post._id, text });
+      const r = review.data;
+      writeReviewRecord({ targetType: TARGET_TYPE.SCIENCE, targetId: post._id, ...r });
+
+      if (r.aiResult === 'block') {
+        const updated = science.update(post._id, { status: SCIENCE_REVIEW_STATUS.BLOCKED });
+        pushNotification({
+          userId: user._id,
+          type: NOTIFICATION_TYPE.SYSTEM,
+          content: `您的科普帖因「${r.reason}」未通过审核已被拦截，可修改后重新发布或申诉。`,
+          relatedId: post._id,
+        });
+        return ok({ postId: post._id, status: SCIENCE_REVIEW_STATUS.BLOCKED, post: updated });
+      }
+      if (r.aiResult === 'review') {
+        const updated = science.update(post._id, { status: SCIENCE_REVIEW_STATUS.REVIEW });
+        return ok({ postId: post._id, status: SCIENCE_REVIEW_STATUS.REVIEW, post: updated });
+      }
+      // 通过：生成摘要/标签（D3）
+      const sum = await generateSummary(text);
+      const updated = science.update(post._id, {
+        status: SCIENCE_REVIEW_STATUS.PASS,
+        summary: sum.data.summary,
+        tags: sum.data.tags,
+      });
+      return ok({ postId: post._id, status: SCIENCE_REVIEW_STATUS.PASS, post: updated });
+    },
+
+    /**
+     * 公开列表（仅 status=pass 可见）
+     * @param {{filter?:object, keyword?:string, tag?:string, page?:number}} param0
+     */
+    async list({ filter = {}, keyword = '', tag = '', page = 1 } = {}) {
+      let list = science.all().filter((p) => p.status === SCIENCE_REVIEW_STATUS.PASS);
+      if (filter.category) list = list.filter((p) => p.category === filter.category);
+      if (tag) list = list.filter((p) => (p.tags || []).includes(tag));
+      if (keyword) {
+        const kw = keyword.toLowerCase();
+        list = list.filter((p) =>
+          [p.title, p.summary, p.content, (p.tags || []).join(' ')]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(kw)
+        );
+      }
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      const pageSize = 10;
+      const total = list.length;
+      const paged = list
+        .slice((page - 1) * pageSize, page * pageSize)
+        .map((p) => {
+          const a = users.getById(p.authorId);
+          return {
+            ...p,
+            author: a ? { _id: a._id, nickname: a.nickname, avatar: a.avatar } : null,
+          };
+        });
+      return ok({ list: paged, total, page, pageSize });
+    },
+
+    /** 热门标签聚合（供列表筛选，最多 12 个） */
+    async tags() {
+      const list = science.all().filter((p) => p.status === SCIENCE_REVIEW_STATUS.PASS);
+      const map = {};
+      list.forEach((p) => (p.tags || []).forEach((t) => { map[t] = (map[t] || 0) + 1; }));
+      const arr = Object.keys(map)
+        .map((t) => ({ tag: t, count: map[t] }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 12);
+      return ok(arr);
+    },
+
+    /** 详情（浏览量 +1，返回作者信息） */
+    async detail(id) {
+      const post = science.getById(id);
+      if (!post) return fail(ERROR_CODE.NOT_FOUND);
+      const updated = science.update(id, { views: (post.views || 0) + 1 });
+      const author = users.getById(updated.authorId);
+      const { ...safePost } = updated;
+      return ok({
+        ...safePost,
+        author: author ? { _id: author._id, nickname: author.nickname, avatar: author.avatar } : null,
+      });
+    },
+  },
+
   // ===================== 会话 / 消息 =====================
   conversation: {
     /** 发起领养意向，创建会话（A4） */
@@ -595,6 +722,68 @@ const mockBackend = {
     },
   },
 
+  // ===================== 全局统一搜索（Sprint3） =====================
+  search: async ({ keyword = '', page = 1, pageSize = 10 } = {}) => {
+    const kw = String(keyword || '').toLowerCase().trim();
+    if (!kw) {
+      return ok({ list: [], total: 0, page, pageSize, postTotal: 0, scienceTotal: 0 });
+    }
+
+    // 1. 搜索领养帖（仅公开：status=adoptable + aiReviewStatus=pass）
+    let postHits = posts.all().filter(
+      (p) => p.status === POST_STATUS.ADOPTABLE && p.aiReviewStatus === AI_REVIEW_STATUS.PASS
+    );
+    if (kw) {
+      postHits = postHits.filter((p) =>
+        [p.breed, p.summary, p.personality, (p.location || {}).city, (p.aiTags || []).join(' ')]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(kw)
+      );
+    }
+    const postTotal = postHits.length;
+    postHits = postHits
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((p) => ({
+        ...p,
+        _type: 'post',
+        _typeLabel: '领养',
+        cover: (p.photos && p.photos[0]) || '',
+      }));
+
+    // 2. 搜索科普帖（仅公开：status=pass）
+    let scienceHits = science.all().filter((p) => p.status === SCIENCE_REVIEW_STATUS.PASS);
+    if (kw) {
+      scienceHits = scienceHits.filter((p) =>
+        [p.title, p.summary, p.content, (p.tags || []).join(' ')]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(kw)
+      );
+    }
+    const scienceTotal = scienceHits.length;
+    scienceHits = scienceHits
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((p) => {
+        const a = users.getById(p.authorId);
+        return {
+          ...p,
+          _type: 'science',
+          _typeLabel: '科普',
+          author: a ? { _id: a._id, nickname: a.nickname, avatar: a.avatar } : null,
+        };
+      });
+
+    // 3. 合并：按 created_at 时间倒序统一排序
+    const merged = [...postHits, ...scienceHits].sort((a, b) => b.createdAt - a.createdAt);
+    const total = merged.length;
+    const paged = merged.slice((page - 1) * pageSize, page * pageSize);
+
+    return ok({ list: paged, total, page, pageSize, postTotal, scienceTotal });
+  },
+
   // ===================== 图片审核（占位） =====================
   imageReview: async (images = []) => reviewImages(images),
 };
@@ -664,7 +853,64 @@ export function seedMockData() {
       createdAt: Date.now() - 86400000 * (i + 1),
     });
   });
+  // 科普示例帖（便于离线浏览分类/标签筛选/搜索）
+  seedSciencePosts(author._id);
   storage.set('mock_seeded', true);
+}
+
+/** 注入示例科普帖（带 summary/tags/category/views），便于离线浏览与筛选演示 */
+function seedSciencePosts(authorId) {
+  const samples = [
+    {
+      title: '幼猫喂养的 5 个常见误区',
+      category: SCIENCE_CATEGORY.FEEDING,
+      cover: 'https://placekitten.com/400/300',
+      content:
+        '很多新手养猫容易踩坑：牛奶不能喂猫（多数猫乳糖不耐）；幼猫建议少量多餐，每日 3-4 次；选择优质猫粮并备足饮水；换粮需 7 天逐步过渡；注意保暖与驱虫。',
+      summary: '幼猫喂养常见误区与正确做法',
+      tags: ['猫', '喂养', '幼宠'],
+      views: 128,
+    },
+    {
+      title: '狗狗疫苗时间表与注意事项',
+      category: SCIENCE_CATEGORY.HEALTH,
+      cover: 'https://placedog.net/400/300',
+      content:
+        '狗狗 6-8 周龄接种第一针，之后每年加强；接种后观察 30 分钟有无过敏反应；未完成疫苗前尽量避免外出与接触陌生犬只。健康护理还需定期驱虫。',
+      summary: '犬类疫苗接种时间与护理要点',
+      tags: ['狗', '疫苗', '健康'],
+      views: 96,
+    },
+    {
+      title: '猫咪绝育的好处与术后护理',
+      category: SCIENCE_CATEGORY.HEALTH,
+      cover: 'https://placekitten.com/401/301',
+      content:
+        '绝育可降低生殖疾病与走失风险，建议 6 月龄后由专业兽医评估手术。术后注意伤口护理、佩戴伊丽莎白圈、饮食清淡，并避免剧烈活动。',
+      summary: '绝育益处与术后护理指南',
+      tags: ['猫', '绝育', '健康'],
+      views: 64,
+    },
+    {
+      title: '如何训练狗狗定点排便',
+      category: SCIENCE_CATEGORY.BEHAVIOR,
+      cover: 'https://placedog.net/401/301',
+      content:
+        '建立固定排泄点，饭后与睡醒及时带往指定位置；正确行为立即奖励零食与夸奖；出现意外勿打骂，及时清理并消除气味。耐心引导，幼犬更易养成习惯。',
+      summary: '定点排便训练方法',
+      tags: ['狗', '训练', '行为'],
+      views: 52,
+    },
+  ];
+  samples.forEach((s, i) => {
+    science.insert({
+      _id: `sci_seed_${i}`,
+      authorId,
+      ...s,
+      status: SCIENCE_REVIEW_STATUS.PASS,
+      createdAt: Date.now() - 86400000 * (i + 1),
+    });
+  });
 }
 
 export default mockBackend;
