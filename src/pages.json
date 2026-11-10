@@ -36,6 +36,10 @@
       "style": { "navigationBarTitleText": "AI 科普问答" }
     },
     {
+      "path": "pages/search/index",
+      "style": { "navigationBarTitleText": "全局搜索" }
+    },
+    {
       "path": "pages/message/conversation-list",
       "style": { "navigationBarTitleText": "我的会话" }
     },
