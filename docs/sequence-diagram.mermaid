@@ -1,0 +1,104 @@
+%% 4.1 发布 -> AI 审核 -> 展示
+sequenceDiagram
+    actor U as 发帖人
+    participant C as 前端(publish)
+    participant P as post-create
+    participant R as review-trigger
+    participant G as ai-gateway
+    participant DB as 云数据库
+    participant N as notification
+    U->>C: 填写分步表单提交
+    C->>P: post-create(结构化字段+照片)
+    P->>DB: 写入 pet_posts(status=pending, aiReviewStatus=pending)
+    P->>R: review-trigger(targetType=post)
+    R->>G: complianceFilter(文本)
+    alt 命中极端敏感(猫狗食用等)
+        G-->>R: block + 上报
+        R->>DB: aiReviewStatus=blocked, review_records(高风险)
+        R->>N: 通知发帖人(拦截原因)
+    else 疑似/低置信度
+        G-->>R: review(打标)
+        R->>DB: aiReviewStatus=review -> 人工队列
+    else 通过
+        G-->>R: pass
+        R->>DB: aiReviewStatus=pass, status=adoptable
+        R->>G: 生成摘要/标签(D3)
+    end
+    P-->>C: 返回 aiReviewStatus
+    C-->>U: 审核中/已通过(<=5min 内自动可见)
+    U->>C: 浏览列表
+    C->>DB: post-list(仅 adoptable+pass)
+    DB-->>C: 卡片列表
+
+%% 4.2 我要领养 -> 会话 -> 交换联系方式 -> 接受/拒绝
+sequenceDiagram
+    actor A as 领养人
+    actor P as 发帖人
+    participant C as 前端(adopt/detail)
+    participant CV as conversation
+    participant M as message
+    participant DB as 云数据库
+    participant N as notification
+    A->>C: 点击[我要领养]
+    C->>CV: conversation-create(postId)
+    CV->>DB: 创建会话(adopterId,publisherId)
+    CV->>N: 通知发帖人(新领养意向)
+    A->>C: 输入文字/图片/联系方式
+    C->>M: message-send(type, content/contactEnc)
+    M->>DB: 写入 messages(加密联系方式)
+    M->>N: 实时推送发帖人(uni-push/订阅消息)
+    P->>C: 打开会话，见联系方式卡
+    P->>C: 点击[接受]/[拒绝]
+    C->>CV: conversation-decide(action)
+    CV->>DB: 会话状态回写 + 帖子状态(adopted 仅一次)
+    CV->>N: 通知领养人(结果)
+    Note over C: 发送/跳转平台外时弹 safety-tip-modal(Q1)
+
+%% 4.3 AI 科普问答链路
+sequenceDiagram
+    actor U as 用户
+    participant C as 前端(ai-chat)
+    participant Q as ai-chat
+    participant G as ai-gateway
+    participant LLM as 免密钥大模型
+    participant DB as 云数据库
+    U->>C: 输入问题
+    C->>Q: ai-chat(sessionId, question)
+    Q->>DB: 校验 dailyCount(<=20) + 查历史
+    Q->>G: complianceFilter(question)
+    alt 违规/极端敏感
+        G-->>Q: 拦截 + 上报
+        Q-->>C: 提示「内容不合规」
+    else 合规
+        Q->>G: callLLM(系统提示词 qa.js + 截断上下文)
+        G->>LLM: 免密钥调用(无 key)
+        LLM-->>G: answer
+        G-->>Q: 后处理(加免责 + token 统计)
+        Q->>DB: 存 turns + dailyCount+1
+        Q-->>C: {answer, quotaLeft, disclaimer}
+    end
+
+%% 4.4 举报 -> AI + 人工复核
+sequenceDiagram
+    actor U as 举报人
+    participant C as 前端
+    participant RP as report
+    participant R as review-trigger
+    participant G as ai-gateway
+    participant DB as 云数据库
+    participant HR as human-review
+    participant N as notification
+    U->>C: 选择原因+补充 -> 提交
+    C->>RP: report-create(target, reason, detail)
+    RP->>DB: 写 reports(status=pending)
+    RP->>R: review-trigger(targetType=report)
+    R->>G: 复核目标内容
+    alt 多次举报/高置信违规
+        G-->>R: block + 降权
+        R->>DB: 目标 status=taken_down, review_records
+    else 疑似
+        R->>DB: 进人工队列(review)
+    end
+    HR->>DB: operator 取队列(decision)
+    HR->>N: 通知举报人(结果)
+    Note over HR: 被拦截用户可在消息中心 appeal-create -> 24h 人工复核
