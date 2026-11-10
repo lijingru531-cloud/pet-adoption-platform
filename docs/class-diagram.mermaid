@@ -1,0 +1,166 @@
+classDiagram
+    class User {
+        +String _id
+        +String openidMP
+        +String openidH5
+        +String openidAPP
+        +String unionid
+        +String mobile PK
+        +String nickname
+        +String avatar
+        +String role
+        +Boolean isMinor
+        +Boolean ageVerified
+        +String status
+        +Date createdAt
+        +Date updatedAt
+    }
+    class PetPost {
+        +String _id
+        +String authorId
+        +String species
+        +String breed
+        +Number age
+        +String gender
+        +String healthStatus
+        +Object location
+        +String personality
+        +String reason
+        +String[] photos
+        +String status
+        +String aiReviewStatus
+        +String[] aiTags
+        +String summary
+        +Number viewCount
+        +Number favoriteCount
+        +Date createdAt
+    }
+    class Conversation {
+        +String _id
+        +String postId
+        +String adopterId
+        +String publisherId
+        +String status
+        +Date createdAt
+        +Date updatedAt
+    }
+    class Message {
+        +String _id
+        +String conversationId
+        +String senderId
+        +String type
+        +String content
+        +String contactEnc
+        +Boolean isContactShared
+        +String aiFlag
+        +Date createdAt
+    }
+    class SciencePost {
+        +String _id
+        +String authorId
+        +String title
+        +String content
+        +String[] images
+        +String category
+        +String[] tags
+        +String aiReviewStatus
+        +Date createdAt
+    }
+    class AiChatSession {
+        +String _id
+        +String userId
+        +Object[] turns
+        +Number dailyCount
+        +String date
+        +Date createdAt
+    }
+    class ReviewRecord {
+        +String _id
+        +String targetType
+        +String targetId
+        +String aiResult
+        +String riskLevel
+        +String reason
+        +Number confidence
+        +String handlerId
+        +String decision
+        +Date createdAt
+    }
+    class Report {
+        +String _id
+        +String reporterId
+        +String targetType
+        +String targetId
+        +String reason
+        +String detail
+        +String status
+        +String aiResult
+        +String handlerId
+        +Date createdAt
+    }
+    class Appeal {
+        +String _id
+        +String userId
+        +String targetType
+        +String targetId
+        +String reason
+        +String status
+        +String handlerId
+        +Date createdAt
+    }
+    class Favorite {
+        +String _id
+        +String userId
+        +String targetType
+        +String targetId
+        +Date createdAt
+    }
+    class Notification {
+        +String _id
+        +String userId
+        +String type
+        +String content
+        +Boolean read
+        +String relatedId
+        +Date createdAt
+    }
+    class LostPetMark {
+        +String _id
+        +String userId
+        +Object locationFuzzy
+        +String petDesc
+        +String[] photos
+        +Date lostTime
+        +String status
+        +Date createdAt
+    }
+    class AiGateway {
+        <<service>>
+        +complianceFilter(text)
+        +enforceQuota(userId)
+        +truncateContext(turns)
+        +callLLM(prompt)
+        +postProcess(answer)
+    }
+    class ReviewTrigger {
+        <<service>>
+        +reviewText(target)
+        +flagOrBlock(result)
+    }
+
+    User "1" *-- "0..*" PetPost : 发布
+    User "1" *-- "0..*" SciencePost : 发布
+    User "1" *-- "0..*" Conversation : 作为领养人/发帖人
+    Conversation "1" *-- "0..*" Message : 包含
+    PetPost "1" *-- "0..*" Conversation : 产生
+    User "1" *-- "0..*" Favorite : 收藏
+    User "1" *-- "0..*" Notification : 接收
+    User "1" *-- "0..*" AiChatSession : 发起
+    PetPost "1" *-- "0..*" ReviewRecord : 审核
+    SciencePost "1" *-- "0..*" ReviewRecord : 审核
+    Report "1" *-- "0..*" ReviewRecord : 复核
+    User "1" *-- "0..*" Report : 举报
+    User "1" *-- "0..*" Appeal : 申诉
+    User "1" *-- "0..*" LostPetMark : 标注
+    ReviewTrigger ..> AiGateway : 调用
+    AiChatSession ..> AiGateway : 调用
